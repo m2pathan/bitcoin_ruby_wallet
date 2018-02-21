@@ -356,7 +356,7 @@ if ARGV.length > 0
 			puts "6. redeemtoaddress  -  Send indicated value from your own UTXO from mulisig"
 			puts "======================================================================"
 		else
-			"Command not found!!! (Type 'ruby wallet.rb help' for list of commands supported)"
+			puts "Command not found!!! (Type 'ruby wallet.rb help' for list of commands supported)"
 	end #end of case
 else
 	puts "Need help? Type 'ruby wallet.rb help'"
