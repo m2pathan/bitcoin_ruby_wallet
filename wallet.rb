@@ -79,53 +79,56 @@ def sendtoaddress()
 		vout = ARGV[2]
 		amnt = ARGV[3]
 		addr = ARGV[4]
-		
+
 		res = validateInput(txid, vout, amnt, addr)
 		if res == {}
 			#convert amount into satoshi
 			amnt = amnt.to_f
-			amnt = amnt * $BTC
-			
-			#sending transaction
-			txDetails = @rpc.getrawtransaction(txid, true)
-			prev_amnt = txDetails["vout"][vout]["value"]
-			prev_amnt = prev_amnt * $BTC
-			if prev_amnt < (amnt + $FEE)
-				res = {"error" => "in-sufficient balance"} 
-			end
-			change_amnt = prev_amnt - (amnt + $FEE)
-			prev_addr = txDetails["vout"][vout]["scriptPubKey"]["addresses"]	
-			response = @rpc.gettransaction(txid)
-			response = response['hex'].to_s
-			$prev_tx = Bitcoin::P::Tx.new(response.htb)
-			prev_tx = $prev_tx
-			sigKey = Bitcoin::Key.from_base58(@rpc.dumpprivkey(prev_addr[0]))
-			new_tx = build_tx do |t|
-				t.input do |i|
-					i.prev_out prev_tx
-					i.prev_out_index vout
-					i.signature_key sigKey
+			if confirm_send(addr, amnt)
+				amnt = amnt * $BTC
+				vout = vout.to_i
+				addr = addr.to_s
+				#sending transaction
+				txDetails = @rpc.getrawtransaction(txid, true)
+				prev_amnt = txDetails["vout"][vout]["value"]
+				prev_amnt = prev_amnt * $BTC
+				if prev_amnt < (amnt + $FEE)
+					res = {"error" => "in-sufficient balance"} 
 				end
-				t.output do |o|
-					o.value amnt
-					o.script {|s| s.recipient addr}
+				change_amnt = prev_amnt - (amnt + $FEE)
+				prev_addr = txDetails["vout"][vout]["scriptPubKey"]["addresses"]	
+				response = @rpc.gettransaction(txid)
+				response = response['hex'].to_s
+				$prev_tx = Bitcoin::P::Tx.new(response.htb)
+				prev_tx = $prev_tx
+				sigKey = Bitcoin::Key.from_base58(@rpc.dumpprivkey(prev_addr[0]))
+				new_tx = build_tx do |t|
+					t.input do |i|
+						i.prev_out prev_tx
+						i.prev_out_index vout
+						i.signature_key sigKey
+					end
+					t.output do |o|
+						o.value amnt
+						o.script {|s| s.recipient addr}
+					end
+					t.output do |o|
+						o.value change_amnt
+						o.script {|s| s.recipient prev_addr[0]}
+					end
 				end
-				t.output do |o|
-					o.value change_amnt
-					o.script {|s| s.recipient prev_addr[0]}
-				end
-			end
 
-			res = Bitcoin::Protocol::Tx.new(new_tx.to_payload)
-			#p res.verify_input_signature(0, prev_tx) == true
-			hex =  res.to_payload.unpack("H*")[0] # hex binary
-			
-			#sending the raw transaction to network
-			transRes = @rpc.sendrawtransaction (hex)
-			res = {
-				"success" => "transaction send successful",
-				"txid" => transRes
-			}
+				res = Bitcoin::Protocol::Tx.new(new_tx.to_payload)
+				#p res.verify_input_signature(0, prev_tx) == true
+				hex =  res.to_payload.unpack("H*")[0] # hex binary
+				
+				#sending the raw transaction to network
+				transRes = @rpc.sendrawtransaction (hex)
+				res = {
+					"success" => "transaction send successful",
+					"txid" => transRes
+				}
+			end
 		end
 	else
 		res = {
@@ -317,7 +320,7 @@ def redeemtoaddress()
 end
 
 def validateInput(txid, vout, amnt, addr)	
-	if @rpc.gettxout(txid, vout) == nil
+	if @rpc.gettxout(txid, vout.to_i) == nil
 		return ({"error" => "transaction id is invalid or already spent"})
 	end
 	if !Bitcoin.valid_address? addr	
@@ -340,8 +343,15 @@ def is_integer? string
 	true if (Integer(string) && string.to_i >=0) rescue false
 end
 
+def confirm_send(to, amount)
+    $stderr.print "Are you sure you want to send "
+    $stderr.print "#{amount} BTC "
+    $stderr.print "to \"#{to}\"? (y/n): "
+    $stdin.gets.chomp.downcase == 'y'
+end
+
 if ARGV.length > 0
-    @command = ARGV[0]
+	@command = ARGV[0]
 	case @command
 		when "listutxo"
 			res = listutxo()
