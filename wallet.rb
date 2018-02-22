@@ -185,7 +185,7 @@ def sendtomultisig()
 		tx_in = Bitcoin::Protocol::TxIn.from_hex_hash(txid, vout)
 		tx.add_in(tx_in)
 		tx_out1 = Bitcoin::Protocol::TxOut.new(amnt, script_pubkey)
-		tx_out2 = Bitcoin::Protocol::TxOut.new(change_amnt, prev_addr[0])
+		tx_out2 = Bitcoin::Protocol::TxOut.value_to_address(change_amnt, prev_addr[0])
 		tx.add_out(tx_out1)
 		tx.add_out(tx_out2)
 
