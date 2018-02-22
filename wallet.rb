@@ -112,9 +112,11 @@ def sendtoaddress()
 						o.value amnt
 						o.script {|s| s.recipient addr}
 					end
-					t.output do |o|
-						o.value change_amnt
-						o.script {|s| s.recipient prev_addr[0]}
+					if change_amnt > 0
+						t.output do |o|
+							o.value change_amnt
+							o.script {|s| s.recipient prev_addr[0]}
+						end
 					end
 				end
 
@@ -194,9 +196,11 @@ def sendtomultisig()
 		tx_in = Bitcoin::Protocol::TxIn.from_hex_hash(txid, vout)
 		tx.add_in(tx_in)
 		tx_out1 = Bitcoin::Protocol::TxOut.new(amnt, script_pubkey)
-		tx_out2 = Bitcoin::Protocol::TxOut.value_to_address(change_amnt, prev_addr[0])
 		tx.add_out(tx_out1)
-		tx.add_out(tx_out2)
+		if change_amnt>0
+			tx_out2 = Bitcoin::Protocol::TxOut.value_to_address(change_amnt, prev_addr[0])
+			tx.add_out(tx_out2)
+		end
 
 		#add signature to the new transaction
 		sig_hash = tx.signature_hash_for_input(0, prev_tx, Bitcoin::Script::SIGHASH_TYPE[:all])
@@ -273,10 +277,11 @@ def redeemtoaddress()
 			tx_in = Bitcoin::Protocol::TxIn.from_hex_hash(txid, vout)
 			tx.add_in(tx_in)
 			tx_out1 = Bitcoin::Protocol::TxOut.value_to_address(amnt, addr)
-			tx_out2 = Bitcoin::Protocol::TxOut.new(change_amnt, script_pubkey)
 			tx.add_out(tx_out1)
-			tx.add_out(tx_out2)
-
+			if change_amnt > 0
+				tx_out2 = Bitcoin::Protocol::TxOut.new(change_amnt, script_pubkey)
+				tx.add_out(tx_out2)
+			end
 			sig_hash = tx.signature_hash_for_input(0, prev_tx, Bitcoin::Script::SIGHASH_TYPE[:all])
 
 			#signing the transaction
