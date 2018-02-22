@@ -80,7 +80,6 @@ def sendtoaddress()
 		amnt = ARGV[3]
 		addr = ARGV[4]
 		
-		#TODO: validate the parameters
 		res = validateInput(txid, vout, amnt, addr)
 		if res == {}
 			#convert amount into satoshi
@@ -143,7 +142,7 @@ def sendtomultisig()
 		txid = ARGV[1]
 		vout = ARGV[2]
 		amnt = ARGV[3]
-		amnt = amnt * $BTC
+		
 		pubKeys = []
 		for i in 4..(ARGV.length-1) do
 			if Bitcoin.valid_address? ARGV[i]
@@ -151,7 +150,7 @@ def sendtomultisig()
 			end
 		end
 
-		#TODO: validation
+		#validation
 		if !is_float? amnt
 			return res = {"error" => "invalid amount"}
 		end
@@ -161,7 +160,14 @@ def sendtomultisig()
 		if pubKeys.length <= 0
 			return res = {"error" => "invalid addresses"}
 		end
+		vout = vout.to_i
+		if @rpc.gettxout(txid, vout) == nil
+			return res = {"error" => "invalid transaction id or already spent"}
+		end
 
+		amnt = amnt.to_f
+		amnt = amnt * $BTC
+		
 		#previous transaction details
 		txDetails = @rpc.getrawtransaction(txid, true)
 		prev_amnt = txDetails["vout"][vout]["value"]
@@ -224,7 +230,7 @@ def redeemtoaddress()
 		addr = ARGV[4]
 		amnt = amnt * $BTC
 
-		#TODO: validation
+		#validation
 		res = validateInput(txid, vout, amnt, addr)
 		if res == {}
 			vout = vout.to_i
@@ -232,7 +238,12 @@ def redeemtoaddress()
 			addr = addr.to_s
 			#previous transaction details
 			txDetails = @rpc.getrawtransaction(txid, true)
+			txType = txDetails["vout"][vout]["scriptPubKey"]["type"]
+			if txType != 'multisig'
+				return res = {"error" => "input transaction id should be of type multisig"}
+			end 
 			prev_amnt = txDetails["vout"][vout]["value"]
+
 			prev_amnt = prev_amnt * $BTC
 			if prev_amnt < (amnt + $FEE)
 				return res = {"error" => "in-sufficient balance"} 
@@ -306,6 +317,9 @@ def redeemtoaddress()
 end
 
 def validateInput(txid, vout, amnt, addr)	
+	if @rpc.gettxout(txid, vout) == nil
+		return ({"error" => "transaction id is invalid or already spent"})
+	end
 	if !Bitcoin.valid_address? addr	
 		return ({"error" => "invalid bitcoin address"})
 	end
