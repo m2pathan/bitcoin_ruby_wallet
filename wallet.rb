@@ -1,10 +1,10 @@
-#Wallet created by: m2pathan
+# Wallet created by: m2pathan
 require 'bitcoin'
 require 'json'
 require './rpc_bitcoinruby.rb'
 require 'csv'
 
-#BTC_RPC object
+# BTC_RPC object
 $BTC_RPC = BitcoinRPC.new('http://m2pathan:iamjusttestingapplication@127.0.0.1:18332')
 Bitcoin.network = :regtest
 include Bitcoin::Builder
@@ -97,8 +97,8 @@ class Transaction
           transaction["vin"].each { |vin|
             if vin["txid"] != nil
               input_transaction = {
-                  'trans_id': vin["txid"],
-                  'vout_index': vin["vout"]
+                  'trans_id' => vin["txid"],
+                  'vout_index' => vin["vout"]
               }
               spent_transactions << input_transaction
             end
@@ -108,11 +108,11 @@ class Transaction
               vout["scriptPubKey"]["addresses"].each { |address|
                 if all_addresses_in_wallet.include? address
                   wallet_transaction = {
-                      'trans_id': trans_id,
-                      'block_hash': block_details["hash"],
-                      'value': vout["value"],
-                      'vout_index': vout["n"],
-                      'address': vout["scriptPubKey"]["addresses"]
+                      'trans_id' => trans_id,
+                      'block_hash' => block_details["hash"],
+                      'value' => vout["value"],
+                      'vout_index' => vout["n"],
+                      'address' => vout["scriptPubKey"]["addresses"]
                   }
                   received_transactions << wallet_transaction
                   break
@@ -206,7 +206,7 @@ class Wallet
   def list_utxo
     res = {}
     if ARGV.length > 1
-      res = { "error": "Something went wrong!! (listutxo don't have any parameter)" }
+      res = { "error" => "Something went wrong!! (listutxo don't have any parameter)" }
     else
       res = @transaction.get_all_utxo
     end
@@ -216,7 +216,7 @@ class Wallet
   def generate_key
     res = {}
     if ARGV.length > 1
-      res = { "error": "Something went wrong!! (generatekey don't have any parameter)" }
+      res = { "error" => "Something went wrong!! (generatekey don't have any parameter)" }
     else
       res = @key.generate_key
     end
