@@ -97,8 +97,8 @@ class Transaction
           transaction["vin"].each { |vin|
             if vin["txid"] != nil
               input_transaction = {
-                  'trans_id' => vin["txid"],
-                  'vout_index' => vin["vout"]
+                'trans_id' => vin["txid"],
+                'vout_index' => vin["vout"]
               }
               spent_transactions << input_transaction
             end
@@ -210,7 +210,7 @@ class Wallet
     else
       res = @transaction.get_all_utxo
     end
-    return res
+    res
   end
   
   def generate_key
@@ -220,11 +220,11 @@ class Wallet
     else
       res = @key.generate_key
     end
-    return res
+    res
   end
   
   def list_key
-    return @key.get_all_keys
+    @key.get_all_keys
   end
   
   def send_to_address
@@ -237,16 +237,14 @@ class Wallet
   
       res = @util.validate_input(txid, vout, amnt, addr)
       if res == true
-        #convert amount into satoshi
         amnt = amnt.to_f
         if @util.confirm_send(addr, amnt)
-          amnt = amnt * $BTC
+          amnt *= $BTC
           vout = vout.to_i
           addr = addr.to_s
-          #sending transaction
           tx_details = $BTC_RPC.getrawtransaction(txid, true)
           prev_amnt = tx_details["vout"][vout]["value"]
-          prev_amnt = prev_amnt * $BTC
+          prev_amnt *= $BTC
           if prev_amnt < (amnt + $FEE)
             return res = {"error" => "in-sufficient balance"} 
           end
@@ -269,16 +267,16 @@ class Wallet
             if change_amnt > 0
               t.output do |o|
                 o.value change_amnt
-                o.script {|s| s.recipient prev_addr[0]}
+                o.script { |s| s.recipient prev_addr[0] }
               end
             end
           end
   
           res = Bitcoin::Protocol::Tx.new(new_tx.to_payload)
-          #p res.verify_input_signature(0, prev_tx) == true
-          hex =  res.to_payload.unpack("H*")[0] # hex binary
+          # p res.verify_input_signature(0, prev_tx) == true
+          hex = res.to_payload.unpack("H*")[0] # hex binary
           
-          #sending the raw transaction to network
+          # sending the raw transaction to network
           trans_res = $BTC_RPC.sendrawtransaction(hex)
           res = {
             "success" => "transaction send successful",
@@ -297,7 +295,7 @@ class Wallet
         }
       }
     end
-    return res
+    res
   end
   
   def send_to_multisig
@@ -306,15 +304,13 @@ class Wallet
       txid = ARGV[1]
       vout = ARGV[2]
       amnt = ARGV[3]
-      
       pubkeys = []
-      for i in 4..(ARGV.length-1) do
-        if (Bitcoin.valid_address? ARGV[i]) && (@key.is_valid_address(ARGV[i]))
+      for i in 4..(ARGV.length - 1) do
+        if (Bitcoin.valid_address? ARGV[i]) && (@key.is_valid_address ARGV[i])
           pubkeys << @key.get_key(ARGV[i]).pub
         end
       end
-  
-      #validation
+      # validation
       if !@util.is_float? amnt
         return ({"error" => "invalid amount"})
       end
@@ -333,27 +329,27 @@ class Wallet
       end
   
       amnt = amnt.to_f
-      amnt = amnt * $BTC
+      amnt *= $BTC
       
-      #previous transaction details
+      # previous transaction details
       txDetails = $BTC_RPC.getrawtransaction(txid, true)
       prev_amnt = txDetails["vout"][vout]["value"]
-      prev_amnt = prev_amnt * $BTC
+      prev_amnt *= $BTC
       if prev_amnt < (amnt + $FEE)
         return ({"error" => "in-sufficient balance"})
       end
       prev_addr = txDetails["vout"][vout]["scriptPubKey"]["addresses"]
-      response = $BTC_RPC.gettransaction(txid)
+      response = $BTC_RPC.gettransaction txid
       response = response['hex'].to_s
       prev_tx = Bitcoin::Protocol::Tx.new(response.htb)
       change_amnt = prev_amnt - (amnt + $FEE)
-      key = @key.get_key(prev_addr[0])
+      key = @key.get_key prev_addr[0]
   
-      #creating multisig script using public keys
+      # creating multisig script using public keys
       script_pubkey = Bitcoin::Script.to_multisig_script(2, *pubkeys)
-      #p ({ dump_script_pubkey: Bitcoin::Script.new(script_pubkey).to_string })
+      # p ({ dump_script_pubkey: Bitcoin::Script.new(script_pubkey).to_string })
   
-      #sending amount to multiSig address
+      # sending amount to multiSig address
       tx = Bitcoin::Protocol::Tx.new
       tx_in = Bitcoin::Protocol::TxIn.from_hex_hash(txid, vout)
       tx.add_in(tx_in)
@@ -364,19 +360,19 @@ class Wallet
         tx.add_out(tx_out2)
       end
   
-      #add signature to the new transaction
+      # add signature to the new transaction
       sig_hash = tx.signature_hash_for_input(0, prev_tx, Bitcoin::Script::SIGHASH_TYPE[:all])
       signature = key.sign(sig_hash)
       script_sig = Bitcoin::Script.to_signature_pubkey_script(signature, key.pub.htb, Bitcoin::Script::SIGHASH_TYPE[:all])
       tx.in[0].script_sig = script_sig
   
-      #verify the signature
+      # verify the signature
       verify_tx = Bitcoin::Protocol::Tx.new(tx.to_payload)
-      #p ({ verify: verify_tx.verify_input_signature(0, prev_tx) })
+      # p ({ verify: verify_tx.verify_input_signature(0, prev_tx) })
   
-      #sending transaction on network using BitcoinRPC
+      # sending transaction on network using BitcoinRPC
       hex =  verify_tx.to_payload.unpack("H*")[0] # hex binary
-      #puts hex.to_s
+      # puts hex.to_s
       trans_res = $BTC_RPC.sendrawtransaction(hex)
       res = {
         "success" => "transaction send successful",
@@ -393,6 +389,7 @@ class Wallet
         }
       }
     end
+    res
   end
   
   def redeem_to_address
@@ -403,47 +400,44 @@ class Wallet
       amnt = ARGV[3]
       addr = ARGV[4]
       
-      #validation
+      # validation
       res = @util.validate_input(txid, vout, amnt, addr)
       if res == true
         vout = vout.to_i
         amnt = amnt.to_f
         addr = addr.to_s
         amnt = amnt * $BTC
-        #previous transaction details
+        # previous transaction details
         tx_details = $BTC_RPC.getrawtransaction(txid, true)
-        txType = tx_details["vout"][vout]["scriptPubKey"]["type"]
-        
+        txType = tx_details["vout"][vout]["scriptPubKey"]["type"] 
         if txType != 'multisig'
           return ({"error" => "input transaction id should be of type multisig"})
         end 
         
         prev_amnt = tx_details["vout"][vout]["value"]
-        prev_amnt = prev_amnt * $BTC
-  
+        prev_amnt *= $BTC
         if prev_amnt < (amnt + $FEE)
           return ({"error" => "in-sufficient balance"})
         end
         
         prev_addrs = tx_details["vout"][vout]["scriptPubKey"]["addresses"]
-        response = $BTC_RPC.gettransaction(txid)
+        response = $BTC_RPC.gettransaction txid
         response = response['hex'].to_s
         prev_tx = Bitcoin::Protocol::Tx.new(response.htb)
         change_amnt = prev_amnt - (amnt + $FEE)
         
         keys = [];
         pubKeys = []
-        
         prev_addrs.each do |pAddr|
           keys << @key.get_key(pAddr)
           pubKeys << @key.get_key(pAddr).pub
         end
   
-        #changes return to multisig address
+        # changes return to multisig address
         script_pubkey = Bitcoin::Script.to_multisig_script(2, *pubKeys)
-        #p ({ dump_script_pubkey: Bitcoin::Script.new(script_pubkey).to_string })
+        # p ({ dump_script_pubkey: Bitcoin::Script.new(script_pubkey).to_string })
   
-        #building new transaction
+        # building new transaction
         tx = Bitcoin::Protocol::Tx.new
         tx_in = Bitcoin::Protocol::TxIn.from_hex_hash(txid, vout)
         tx.add_in(tx_in)
@@ -453,20 +447,18 @@ class Wallet
           tx_out2 = Bitcoin::Protocol::TxOut.new(change_amnt, script_pubkey)
           tx.add_out(tx_out2)
         end
+        # signing the transaction
         sig_hash = tx.signature_hash_for_input(0, prev_tx, Bitcoin::Script::SIGHASH_TYPE[:all])
-  
-        #signing the transaction
         script_sig = Bitcoin::Script.to_multisig_script_sig(keys[0].sign(sig_hash), keys[1].sign(sig_hash))
-        
         tx.in[0].script_sig = script_sig
   
-        #verify the transaction signature
+        # verify the transaction signature
         verify_tx = Bitcoin::Protocol::Tx.new(tx.to_payload)
         #p ({verify: verify_tx.verify_input_signature(0, prev_tx)})
   
-        #sending transaction on network using BitcoinRPC
-        hex =  verify_tx.to_payload.unpack("H*")[0] # hex binary
-        #puts hex.to_s
+        # sending transaction on network using BitcoinRPC
+        hex =  verify_tx.to_payload.unpack("H*")[0]
+        # puts hex.to_s
         trans_res = $BTC_RPC.sendrawtransaction(hex)
         res = {
           "success" => "transaction send successful",
@@ -484,7 +476,7 @@ class Wallet
         }
       }
     end
-    return res
+    res
   end
 
 end
