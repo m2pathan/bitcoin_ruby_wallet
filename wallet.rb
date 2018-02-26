@@ -127,7 +127,7 @@ class Transaction
     end
   
     received_transactions.each { |trans|
-      unless spent_transactions.any? { |tx| tx[:trans_id] == trans[:trans_id] and tx[:vout_index] == trans[:vout_index] }
+      unless spent_transactions.any? { |tx| tx["trans_id"] == trans["trans_id"] and tx["vout_index"] == trans["vout_index"] }
         unspent_transactions << trans
       end
     }
@@ -138,7 +138,7 @@ class Transaction
     all_utxo = get_all_utxo
     transaction = nil
     all_utxo.each { |utxo|
-      if (utxo[:trans_id] == txid) && (utxo[:vout_index] == vout)
+      if (utxo["trans_id"] == txid) && (utxo["vout_index"] == vout)
         transaction = utxo
       end
     }
